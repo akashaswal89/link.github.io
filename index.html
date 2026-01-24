@@ -871,24 +871,75 @@
                         <div class="code-title">
                             <i class="fas fa-file-code"></i> Custom Code Editor
                         </div>
-                        <span class="code-badge">Editable</span>
+                        <span class="code-badge">Diigo v2</span>
                     </div>
                     <div class="code-wrapper">
-                        <textarea class="code-textarea" id="t4" spellcheck="false" placeholder="Paste your custom code here...">// Add your custom code here
-// This is a fully editable code area
-
-function exampleFunction() {
-    console.log("Hello, Code Library!");
+                        <textarea class="code-textarea" id="t4" spellcheck="false" placeholder="Paste your custom code here...">document.addEventListener("focusin", async (e) => {
+  const el = e.target;
+  
+  // 1. Agar Description wala textarea hai
+  if (el.tagName === "TEXTAREA") {
+    // Check karein ke yeh Description field hai
+    const label = el.closest('.labelAnimateForm')?.querySelector('label');
+    if (label && label.textContent.includes('Description')) {
+      try {
+        const text = await navigator.clipboard.readText();
+        
+        if (!text || el.value.trim()) return;
+        
+        // Sirf Description textarea mein paste karein
+        el.value = text;
+        el.dispatchEvent(new Event("input", { bubbles: true }));
+        el.dispatchEvent(new Event("change", { bubbles: true }));
+        
+        // Add button click karein
+        setTimeout(() => {
+          const addBtn = document.querySelector('.submitButton');
+          if (addBtn) {
+            addBtn.click();
+          }
+        }, 300);
+        
+        return; // IMPORTANT: Return karein taki baaki code na chale
+      } catch (err) {
+        console.log("Clipboard error");
+      }
+    }
+  }
+  
+  // 2. Baaki sab INPUT fields ke liye - BUT Title field ko exclude karein
+  else if (el.tagName === "INPUT" && el.type === "text") {
+    // Title field ko check karein
+    const label = el.closest('.labelAnimateForm')?.querySelector('label');
     
-    // You can edit this code freely
-    const message = "Welcome to the Secure Code Library";
-    alert(message);
+    // Agar Title field hai to skip karein
+    if (label && label.textContent.includes('Title')) {
+      return; // Title field mein kuch na karein
+    }
     
-    return "Code execution complete";
-}
-
-// Call the function
-exampleFunction();</textarea>
+    // Baaki input fields (Tags, Search, etc.) ke liye paste + Enter
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      
+      el.value = text;
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+      
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true
+        })
+      );
+    } catch (err) {
+      console.log("Clipboard permission denied");
+    }
+  }
+});</textarea>
                     </div>
                     <div class="code-actions">
                         <button class="copy-btn" onclick="copyText('t4')">

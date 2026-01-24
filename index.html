@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secure Code Library</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #7209b7;
+            --success: #4cc9f0;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --light-gray: #e9ecef;
+            --border-radius: 10px;
+            --shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--dark);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Password Protection Overlay */
+        #password-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a2980 0%, #26d0ce 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            color: white;
+        }
+
+        .password-container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            width: 90%;
+            max-width: 450px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .password-container h2 {
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .password-container p {
+            margin-bottom: 25px;
+            opacity: 0.9;
+        }
+
+        .password-input {
+            width: 100%;
+            padding: 15px;
+            border-radius: 8px;
+            border: none;
+            font-size: 18px;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 2px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .password-input:focus {
+            outline: 3px solid var(--success);
+        }
+
+        .password-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+            font-weight: 600;
+        }
+
+        .password-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .error-message {
+            color: #ff6b6b;
+            margin-top: 15px;
+            font-weight: 500;
+            display: none;
+        }
+
+        /* Main Content */
+        #main-content {
+            width: 100%;
+            max-width: 1200px;
+            display: none;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header-title {
+            font-size: 2.8rem;
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .header-subtitle {
+            color: var(--gray);
+            font-size: 1.2rem;
+            max-width: 600px;
+            margin: 0 auto 30px;
+        }
+
+        .header-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            background: var(--light);
+            color: var(--dark);
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .control-btn:hover {
+            background: var(--primary);
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        .control-btn i {
+            font-size: 1.1rem;
+        }
+
+        /* Code Boxes */
+        .code-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(500px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .code-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .code-box {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: var(--transition);
+        }
+
+        .code-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.15);
+        }
+
+        .code-header {
+            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .code-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .code-title i {
+            font-size: 1.2rem;
+        }
+
+        .code-badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+
+        .code-wrapper {
+            position: relative;
+        }
+
+        .code-textarea {
+            width: 100%;
+            padding: 20px;
+            border: none;
+            background: #f8f9fa;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 200px;
+            max-height: 400px;
+            color: var(--dark);
+            border-bottom: 1px solid var(--light-gray);
+        }
+
+        .code-textarea:focus {
+            outline: none;
+            background: #f1f3f5;
+        }
+
+        .code-actions {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 20px;
+            background: var(--light);
+        }
+
+        .copy-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .copy-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        .copy-btn.copied {
+            background: var(--success);
+        }
+
+        .char-count {
+            color: var(--gray);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--light-gray);
+            width: 100%;
+        }
+
+        /* Toast Notification */
+        #toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .header-title {
+                font-size: 2.2rem;
+            }
+            
+            .code-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .password-container {
+                padding: 30px 20px;
+                width: 95%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Password Protection Overlay -->
+    <div id="password-overlay">
+        <div class="password-container">
+            <h2><i class="fas fa-lock"></i> Secure Code Library</h2>
+            <p>Please enter the password to access the code snippets</p>
+            <input type="password" id="password-input" class="password-input" placeholder="Enter password" autocomplete="off">
+            <button id="password-submit" class="password-btn">
+                <i class="fas fa-unlock-alt"></i> Unlock Access
+            </button>
+            <p class="error-message" id="password-error">Incorrect password. Please try again.</p>
+            <p style="margin-top: 20px; font-size: 0.9rem; opacity: 0.7;">
+                <i class="fas fa-info-circle"></i> Default password: <strong>code123</strong>
+            </p>
+        </div>
+    </div>
+
+    <!-- Main Content (Hidden until password is entered) -->
+    <div id="main-content">
+        <header>
+            <h1 class="header-title">
+                <i class="fas fa-code"></i> Secure Code Library
+            </h1>
+            <p class="header-subtitle">
+                A collection of useful code snippets with one-click copy functionality. 
+                All code is securely stored and accessible only with proper authentication.
+            </p>
+            
+            <div class="header-controls">
+                <button class="control-btn" id="toggle-theme">
+                    <i class="fas fa-moon"></i> Dark Mode
+                </button>
+                <button class="control-btn" id="copy-all">
+                    <i class="fas fa-copy"></i> Copy All Code
+                </button>
+                <button class="control-btn" id="export-btn">
+                    <i class="fas fa-download"></i> Export All
+                </button>
+                <button class="control-btn" id="lock-btn">
+                    <i class="fas fa-lock"></i> Lock Session
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div class="code-container">
+                <!-- Diigo Code Box -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fab fa-js"></i> Diigo Auto-Paste Code
+                        </div>
+                        <span class="code-badge">JavaScript</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t1" spellcheck="false">document.addEventListener("focusin", async (e) => {
+  const el = e.target;
+
+  if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+    try {
+      const text = await navigator.clipboard.readText();
+
+      if (!text) return;
+
+      el.value = text;
+
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+
+      el.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Enter",
+          code: "Enter",
+          keyCode: 13,
+          which: 13,
+          bubbles: true
+        })
+      );
+    } catch (err) {
+      console.log("Clipboard permission denied");
+    }
+  }
+});</textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t1')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t1">0</span> characters
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hatena v1 Code Box -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fas fa-hat-cowboy"></i> Hatena Auto-Paste v1
+                        </div>
+                        <span class="code-badge">UserScript</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t2" spellcheck="false">// ==UserScript==
+// @name         Hatena Auto Paste + Auto Submit (Stable)
+// @namespace    http://tampermonkey.net/
+// @version      2.0
+// @description  Auto paste clipboard on click and auto submit without Enter
+// @match        https://b.hatena.ne.jp/*
+// @grant        none
+// ==/UserScript==
+
+(async function () {
+  "use strict";
+
+  async function pasteText(el) {
+    const text = await navigator.clipboard.readText();
+    if (!text) return;
+
+    el.focus();
+
+    const proto =
+      el.tagName === "TEXTAREA"
+        ? HTMLTextAreaElement.prototype
+        : HTMLInputElement.prototype;
+
+    const setter = Object.getOwnPropertyDescriptor(proto, "value")?.set;
+    setter && setter.call(el, text);
+
+    el.dispatchEvent(new Event("input", { bubbles: true }));
+    el.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  document.addEventListener(
+    "pointerdown",
+    async (e) => {
+      let el = e.target;
+
+      while (el && el !== document.body) {
+        if (
+          el.tagName === "INPUT" ||
+          el.tagName === "TEXTAREA"
+        ) break;
+        el = el.parentElement;
+      }
+      if (!el || el === document.body) return;
+
+      try {
+        // 🔹 URL INPUT
+        if (el.id === "url") {
+          await pasteText(el);
+
+          setTimeout(() => {
+            document
+              .querySelector(".js-bookmark-add-url-form-submit")
+              ?.click();
+          }, 300);
+        }
+
+        // 🔹 COMMENT TEXTAREA
+        if (el.classList.contains("bookmarkadd-comment-form")) {
+          await pasteText(el);
+
+          setTimeout(() => {
+            document
+              .querySelector(".js-bookmarkadd-submit-btn")
+              ?.click();
+          }, 300);
+        }
+      } catch (err) {
+        console.log("Clipboard blocked");
+      }
+    },
+    true
+  );
+})();</textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t2')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t2">0</span> characters
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Hatena v2 Code Box -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fas fa-hat-cowboy-side"></i> Hatena One-Click Automation
+                        </div>
+                        <span class="code-badge">UserScript v12.1</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t3" spellcheck="false">// ==UserScript==
+// @name         Hatena One-Click Automation Fixed
+// @namespace    http://tampermonkey.net/
+// @version      12.1
+// @description  Fixed clipboard permission issue
+// @match        https://b.hatena.ne.jp/*
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    console.log('🤖 Hatena Automation Started');
+    
+    // State management
+    const STATE = {
+        IDLE: 'idle',
+        PROCESSING_URL: 'processing_url',
+        PROCESSING_COMMENT: 'processing_comment',
+        COMPLETED: 'completed'
+    };
+    
+    // Initialize state
+    if (!GM_getValue('hatena_state')) {
+        GM_setValue('hatena_state', STATE.IDLE);
+    }
+    
+    // Store clipboard text
+    let clipboardContent = '';
+    let isClipboardReady = false;
+    
+    // ============================================
+    // STEP 1: DELAYED CLIPBOARD READING
+    // ============================================
+    function initializeClipboard() {
+        console.log('⏳ Waiting for page focus before reading clipboard...');
+        
+        // Wait for page to be focused
+        setTimeout(async () => {
+            try {
+                // First make sure page is focused
+                window.focus();
+                
+                // Small delay to ensure focus
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Now read clipboard
+                clipboardContent = await navigator.clipboard.readText();
+                console.log('✅ Clipboard read successfully');
+                console.log('📋 Content:', clipboardContent.substring(0, 50));
+                
+                GM_setValue('hatena_clipboard', clipboardContent);
+                isClipboardReady = true;
+                
+            } catch (err) {
+                console.log('⚠️ Clipboard error, will retry on click:', err.message);
+                // We'll retry when button is clicked
+            }
+        }, 1000);
+    }
+    
+    // ============================================
+    // STEP 2: SETUP BOOKMARK BUTTON (WITH RETRY)
+    // ============================================
+    function setupBookmarkButton() {
+        const buttonSelectors = [
+            'a.btn-white[href*="/add"]',
+            'a[href*="/add"]'
+        ];
+        
+        for (const selector of buttonSelectors) {
+            const button = document.querySelector(selector);
+            if (button && button.textContent.includes('ブックマークを追加')) {
+                console.log('✅ Found bookmark button');
+                
+                // Clone button to remove existing listeners
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+                
+                // Add click listener
+                newButton.addEventListener('click', async function(e) {
+                    console.log('🎯 Button clicked - Starting automation');
+                    
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Try to read clipboard if not already read
+                    if (!isClipboardReady) {
+                        console.log('📋 Reading clipboard on click...');
+                        try {
+                            clipboardContent = await navigator.clipboard.readText();
+                            GM_setValue('hatena_clipboard', clipboardContent);
+                            console.log('✅ Clipboard read on click:', clipboardContent.substring(0, 30));
+                        } catch (err) {
+                            console.log('❌ Cannot read clipboard, showing alert');
+                            alert('Please allow clipboard permissions and try again.');
+                            return;
+                        }
+                    }
+                    
+                    // Start automation
+                    GM_setValue('hatena_state', STATE.PROCESSING_URL);
+                    GM_setValue('hatena_auto_mode', 'true');
+                    
+                    console.log('🚀 Automation started, navigating...');
+                    
+                    // Navigate after small delay
+                    setTimeout(() => {
+                        window.location.href = this.href;
+                    }, 200);
+                });
+                
+                break;
+            }
+        }
+    }
+    
+    // ============================================
+    // STEP 3: HANDLE URL PAGE
+    // ============================================
+    async function handleURLPage() {
+        console.log('🔗 Auto-processing URL page');
+        
+        const urlInput = document.querySelector('#url');
+        if (!urlInput) {
+            console.log('❌ URL input not found');
+            return false;
+        }
+        
+        // Get saved clipboard text
+        let text = GM_getValue('hatena_clipboard', '');
+        if (!text) {
+            console.log('❌ No saved clipboard text');
+            return false;
+        }
+        
+        console.log('📋 Pasting URL:', text.substring(0, 50));
+        
+        // Wait for page to be ready
+        await wait(1000);
+        
+        // Paste to URL input
+        urlInput.focus();
+        urlInput.value = text;
+        urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        console.log('✅ Pasted to URL');
+        
+        // Wait and submit
+        await wait(500);
+        
+        const submitBtn = document.querySelector('.js-bookmark-add-url-form-submit');
+        if (submitBtn) {
+            console.log('🚀 Submitting URL form');
+            submitBtn.click();
+            
+            // Update state for comment page
+            GM_setValue('hatena_state', STATE.PROCESSING_COMMENT);
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // ============================================
+    // STEP 4: HANDLE COMMENT PAGE
+    // ============================================
+    async function handleCommentPage() {
+        console.log('💬 Auto-processing comment page');
+        
+        const commentInput = document.querySelector('textarea[name="annotation"]');
+        if (!commentInput) {
+            console.log('❌ Comment input not found');
+            return false;
+        }
+        
+        // Get saved clipboard text
+        const text = GM_getValue('hatena_clipboard', '');
+        if (!text) {
+            console.log('❌ No text for comment');
+            return false;
+        }
+        
+        console.log('📋 Pasting comment:', text.substring(0, 50));
+        
+        // Wait for page to be ready
+        await wait(1200);
+        
+        // Paste to comment
+        commentInput.focus();
+        commentInput.value = text;
+        commentInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        console.log('✅ Pasted to comment');
+        
+        // Wait and submit
+        await wait(600);
+        
+        const submitBtn = document.querySelector('.js-bookmarkadd-submit-btn');
+        if (submitBtn) {
+            console.log('🚀 Submitting comment form');
+            submitBtn.click();
+            
+            // Update state
+            GM_setValue('hatena_state', STATE.COMPLETED);
+            GM_setValue('hatena_auto_mode', 'false');
+            
+            console.log('🎉 AUTOMATION COMPLETED!');
+            
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // ============================================
+    // STEP 5: MONITOR AND AUTO-PROCESS PAGES
+    // ============================================
+    function startPageMonitor() {
+        console.log('👀 Page monitor started');
+        
+        let lastURL = window.location.href;
+        
+        // Check page every 500ms
+        setInterval(async () => {
+            const currentURL = window.location.href;
+            const autoMode = GM_getValue('hatena_auto_mode', 'false');
+            const currentState = GM_getValue('hatena_state');
+            
+            // If URL changed and we're in auto mode
+            if (currentURL !== lastURL && autoMode === 'true') {
+                console.log('🔄 Page changed to:', currentURL);
+                lastURL = currentURL;
+                
+                // Wait for page to load
+                await wait(800);
+                
+                // Check what page we're on
+                const urlInput = document.querySelector('#url');
+                const commentInput = document.querySelector('textarea[name="annotation"]');
+                
+                if ((currentState === STATE.PROCESSING_URL || urlInput) && !commentInput) {
+                    console.log('📄 URL page detected, processing...');
+                    await handleURLPage();
+                }
+                else if ((currentState === STATE.PROCESSING_COMMENT || commentInput) && !urlInput) {
+                    console.log('📄 Comment page detected, processing...');
+                    await handleCommentPage();
+                }
+            }
+        }, 500);
+    }
+    
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    function wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+    
+    // ============================================
+    // INITIALIZATION
+    // ============================================
+    function init() {
+        console.log('📍 Current state:', GM_getValue('hatena_state'));
+        console.log('🔄 Auto mode:', GM_getValue('hatena_auto_mode', 'false'));
+        
+        // Setup clipboard reading (delayed)
+        initializeClipboard();
+        
+        // Setup bookmark button
+        setTimeout(() => {
+            setupBookmarkButton();
+        }, 500);
+        
+        // Start page monitor
+        startPageMonitor();
+        
+        // If we're already in auto mode, continue process
+        const autoMode = GM_getValue('hatena_auto_mode', 'false');
+        const currentState = GM_getValue('hatena_state');
+        
+        if (autoMode === 'true') {
+            console.log('⚡ Resuming automation...');
+            
+            setTimeout(async () => {
+                if (currentState === STATE.PROCESSING_URL || document.querySelector('#url')) {
+                    await handleURLPage();
+                }
+                else if (currentState === STATE.PROCESSING_COMMENT || document.querySelector('textarea[name="annotation"]')) {
+                    await handleCommentPage();
+                }
+            }, 1000);
+        }
+    }
+    
+    // Start when page is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        setTimeout(init, 500);
+    }
+    
+})();</textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t3')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t3">0</span> characters
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Code Box -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fas fa-file-code"></i> Custom Code Editor
+                        </div>
+                        <span class="code-badge">Editable</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t4" spellcheck="false" placeholder="Paste your custom code here...">// Add your custom code here
+// This is a fully editable code area
+
+function exampleFunction() {
+    console.log("Hello, Code Library!");
+    
+    // You can edit this code freely
+    const message = "Welcome to the Secure Code Library";
+    alert(message);
+    
+    return "Code execution complete";
+}
+
+// Call the function
+exampleFunction();</textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t4')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t4">0</span> characters
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>
+                <i class="fas fa-shield-alt"></i> Secure Code Library v1.0 | 
+                <i class="fas fa-code"></i> Protected Access | 
+                <i class="fas fa-clock"></i> Session will expire on browser refresh
+            </p>
+            <p style="margin-top: 10px; font-size: 0.8rem;">
+                All code snippets are stored locally in your browser. No data is sent to external servers.
+            </p>
+        </footer>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toast-text">Code copied to clipboard!</span>
+    </div>
+
+    <script>
+        // Password protection system
+        const CORRECT_PASSWORD = "AAkash93"; // Default password
+        const SESSION_KEY = "code_library_authenticated";
+        
+        // DOM elements
+        const passwordOverlay = document.getElementById('password-overlay');
+        const passwordInput = document.getElementById('password-input');
+        const passwordSubmit = document.getElementById('password-submit');
+        const passwordError = document.getElementById('password-error');
+        const mainContent = document.getElementById('main-content');
+        const lockBtn = document.getElementById('lock-btn');
+        
+        // Check if user is already authenticated in this session
+        function checkAuthentication() {
+            const isAuthenticated = sessionStorage.getItem(SESSION_KEY) === 'true';
+            
+            if (isAuthenticated) {
+                // User is already authenticated, show main content
+                passwordOverlay.style.display = 'none';
+                mainContent.style.display = 'block';
+                updateCharacterCounts();
+            } else {
+                // User needs to authenticate
+                passwordOverlay.style.display = 'flex';
+                mainContent.style.display = 'none';
+            }
+        }
+        
+        // Handle password submission
+        function handlePasswordSubmit() {
+            const enteredPassword = passwordInput.value.trim();
+            
+            if (enteredPassword === CORRECT_PASSWORD) {
+                // Correct password - grant access
+                sessionStorage.setItem(SESSION_KEY, 'true');
+                passwordOverlay.style.display = 'none';
+                mainContent.style.display = 'block';
+                passwordInput.value = '';
+                passwordError.style.display = 'none';
+                updateCharacterCounts();
+                
+                // Show welcome toast
+                showToast('Access granted! Welcome to Code Library.', 'success');
+            } else {
+                // Wrong password - show error
+                passwordError.style.display = 'block';
+                passwordInput.value = '';
+                passwordInput.focus();
+                
+                // Shake animation for wrong password
+                passwordOverlay.style.animation = 'none';
+                setTimeout(() => {
+                    passwordOverlay.style.animation = 'shake 0.5s';
+                }, 10);
+                
+                // Remove shake animation after it completes
+                setTimeout(() => {
+                    passwordOverlay.style.animation = '';
+                }, 500);
+            }
+        }
+        
+        // Lock session manually
+        function lockSession() {
+            sessionStorage.removeItem(SESSION_KEY);
+            passwordOverlay.style.display = 'flex';
+            mainContent.style.display = 'none';
+            passwordInput.focus();
+            showToast('Session locked. Please enter password again.', 'info');
+        }
+        
+        // Copy text function with enhanced feedback
+        function copyText(id) {
+            const el = document.getElementById(id);
+            el.select();
+            el.setSelectionRange(0, 99999); // For mobile devices
+            
+            try {
+                navigator.clipboard.writeText(el.value).then(() => {
+                    // Visual feedback
+                    const copyBtn = el.parentElement.nextElementSibling.querySelector('.copy-btn');
+                    const originalText = copyBtn.innerHTML;
+                    
+                    copyBtn.classList.add('copied');
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    
+                    // Show toast notification
+                    showToast('Code copied to clipboard!', 'success');
+                    
+                    // Reset button after 2 seconds
+                    setTimeout(() => {
+                        copyBtn.classList.remove('copied');
+                        copyBtn.innerHTML = originalText;
+                    }, 2000);
+                });
+            } catch (err) {
+                // Fallback for older browsers
+                document.execCommand("copy");
+                showToast('Code copied to clipboard!', 'success');
+            }
+        }
+        
+        // Update character counts for all textareas
+        function updateCharacterCounts() {
+            const textareas = document.querySelectorAll('.code-textarea');
+            textareas.forEach(textarea => {
+                const countElement = document.getElementById(`count-${textarea.id}`);
+                if (countElement) {
+                    const charCount = textarea.value.length;
+                    countElement.textContent = charCount.toLocaleString();
+                    
+                    // Update count on input
+                    textarea.addEventListener('input', function() {
+                        const newCount = this.value.length;
+                        countElement.textContent = newCount.toLocaleString();
+                    });
+                }
+            });
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastText = document.getElementById('toast-text');
+            
+            // Set message and style based on type
+            toastText.textContent = message;
+            
+            if (type === 'success') {
+                toast.style.background = '#4cc9f0';
+            } else if (type === 'error') {
+                toast.style.background = '#ff6b6b';
+            } else if (type === 'info') {
+                toast.style.background = '#4361ee';
+            }
+            
+            // Show toast
+            toast.style.display = 'flex';
+            
+            // Hide toast after 3 seconds
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 3000);
+        }
+        
+        // Copy all code to clipboard
+        function copyAllCode() {
+            let allCode = '';
+            const textareas = document.querySelectorAll('.code-textarea');
+            
+            textareas.forEach((textarea, index) => {
+                const title = textarea.closest('.code-box').querySelector('.code-title').textContent;
+                allCode += `// ${title}\n`;
+                allCode += textarea.value;
+                allCode += '\n\n' + '='.repeat(80) + '\n\n';
+            });
+            
+            try {
+                navigator.clipboard.writeText(allCode).then(() => {
+                    showToast('All code copied to clipboard!', 'success');
+                });
+            } catch (err) {
+                // Fallback
+                const tempTextarea = document.createElement('textarea');
+                tempTextarea.value = allCode;
+                document.body.appendChild(tempTextarea);
+                tempTextarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(tempTextarea);
+                showToast('All code copied to clipboard!', 'success');
+            }
+        }
+        
+        // Export all code as a text file
+        function exportAllCode() {
+            let allCode = '=== SECURE CODE LIBRARY EXPORT ===\n';
+            allCode += `Generated: ${new Date().toLocaleString()}\n`;
+            allCode += '='.repeat(50) + '\n\n';
+            
+            const textareas = document.querySelectorAll('.code-textarea');
+            
+            textareas.forEach((textarea, index) => {
+                const title = textarea.closest('.code-box').querySelector('.code-title').textContent;
+                allCode += `FILE ${index + 1}: ${title}\n`;
+                allCode += '-'.repeat(40) + '\n';
+                allCode += textarea.value;
+                allCode += '\n\n' + '='.repeat(60) + '\n\n';
+            });
+            
+            // Create and trigger download
+            const blob = new Blob([allCode], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `code-library-export-${new Date().toISOString().slice(0,10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('All code exported as text file!', 'info');
+        }
+        
+        // Toggle dark mode
+        function toggleDarkMode() {
+            const body = document.body;
+            const isDark = body.classList.toggle('dark-mode');
+            
+            // Update button text
+            const toggleBtn = document.getElementById('toggle-theme');
+            toggleBtn.innerHTML = isDark 
+                ? '<i class="fas fa-sun"></i> Light Mode' 
+                : '<i class="fas fa-moon"></i> Dark Mode';
+            
+            // Store preference
+            localStorage.setItem('code_library_dark_mode', isDark);
+            
+            // Apply dark mode styles if enabled
+            if (isDark) {
+                applyDarkMode();
+            } else {
+                removeDarkMode();
+            }
+            
+            showToast(`Switched to ${isDark ? 'dark' : 'light'} mode`, 'info');
+        }
+        
+        // Apply dark mode styles
+        function applyDarkMode() {
+            document.documentElement.style.setProperty('--light', '#121212');
+            document.documentElement.style.setProperty('--dark', '#f8f9fa');
+            document.documentElement.style.setProperty('--light-gray', '#2d2d2d');
+            document.body.style.background = 'linear-gradient(135deg, #0f0f0f 0%, #2a2a2a 100%)';
+            
+            // Update code boxes
+            document.querySelectorAll('.code-textarea').forEach(textarea => {
+                textarea.style.background = '#1e1e1e';
+                textarea.style.color = '#f8f9fa';
+            });
+        }
+        
+        // Remove dark mode styles
+        function removeDarkMode() {
+            document.documentElement.style.setProperty('--light', '#f8f9fa');
+            document.documentElement.style.setProperty('--dark', '#212529');
+            document.documentElement.style.setProperty('--light-gray', '#e9ecef');
+            document.body.style.background = 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)';
+            
+            // Update code boxes
+            document.querySelectorAll('.code-textarea').forEach(textarea => {
+                textarea.style.background = '#f8f9fa';
+                textarea.style.color = '#212529';
+            });
+        }
+        
+        // Check for saved dark mode preference
+        function checkDarkModePreference() {
+            const darkModeEnabled = localStorage.getItem('code_library_dark_mode') === 'true';
+            if (darkModeEnabled) {
+                document.body.classList.add('dark-mode');
+                applyDarkMode();
+                
+                // Update button text
+                const toggleBtn = document.getElementById('toggle-theme');
+                toggleBtn.innerHTML = '<i class="fas fa-sun"></i> Light Mode';
+            }
+        }
+        
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            // Check authentication on page load
+            checkAuthentication();
+            
+            // Check dark mode preference
+            checkDarkModePreference();
+            
+            // Password submit on button click
+            passwordSubmit.addEventListener('click', handlePasswordSubmit);
+            
+            // Password submit on Enter key
+            passwordInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    handlePasswordSubmit();
+                }
+            });
+            
+            // Lock session button
+            lockBtn.addEventListener('click', lockSession);
+            
+            // Copy all button
+            document.getElementById('copy-all').addEventListener('click', copyAllCode);
+            
+            // Export button
+            document.getElementById('export-btn').addEventListener('click', exportAllCode);
+            
+            // Toggle theme button
+            document.getElementById('toggle-theme').addEventListener('click', toggleDarkMode);
+            
+            // Add shake animation for wrong password
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes shake {
+                    0%, 100% {transform: translateX(0);}
+                    10%, 30%, 50%, 70%, 90% {transform: translateX(-5px);}
+                    20%, 40%, 60%, 80% {transform: translateX(5px);}
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Focus password input on overlay show
+            passwordInput.focus();
+        });
+        
+        // Clear session on page refresh (already handled by sessionStorage)
+        window.addEventListener('beforeunload', function() {
+            // Session will be cleared automatically because we're using sessionStorage
+        });
+    </script>
+</body>
+</html>

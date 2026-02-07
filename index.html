@@ -950,6 +950,124 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Custom Code Box -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fas fa-file-code"></i> Diigo v3
+                        </div>
+                        <span class="code-badge">JavaScript</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t5" spellcheck="false" placeholder="Paste your custom code here...">
+                            // ==UserScript==
+// @name         Diigo No Storage Auto Paste
+// @namespace    http://tampermonkey.net/
+// @version      1.0
+// @description  No link storage - fresh every time
+// @author       You
+// @match        https://www.diigo.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    let isBusy = false;
+    
+    // Ye function HAR BAAR fresh clipboard check karega
+    async function handleBookmark() {
+        if (isBusy) return;
+        isBusy = true;
+        
+        // 1. DIRECTLY CLIPBOARD SE READ - NO STORAGE
+        let currentLink = '';
+        try {
+            currentLink = await navigator.clipboard.readText();
+        } catch {
+            // Agar permission error aaye
+            currentLink = prompt("📋 Link paste karo:", "https://");
+        }
+        
+        if (!currentLink || !currentLink.trim()) {
+            isBusy = false;
+            return;
+        }
+        
+        console.log('📋 Current clipboard link:', currentLink.substring(0, 50));
+        
+        // 2. Modal ka wait
+        const checkInterval = setInterval(() => {
+            const urlInput = document.querySelector('.AddBookmark input[type="text"]');
+            if (urlInput) {
+                clearInterval(checkInterval);
+                
+                // Fill URL with CURRENT link
+                urlInput.value = currentLink;
+                urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                // Next button
+                setTimeout(() => {
+                    const nextBtn = document.querySelector('.submitButton');
+                    if (nextBtn && nextBtn.textContent.includes('Next')) {
+                        nextBtn.click();
+                        
+                        // Description fill
+                        setTimeout(() => {
+                            const desc = document.querySelector('.AddBookmark textarea');
+                            if (desc) {
+                                desc.value = currentLink;
+                                desc.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                // Add button
+                                setTimeout(() => {
+                                    const addBtn = document.querySelector('.submitButton');
+                                    if (addBtn && addBtn.textContent.includes('Add')) {
+                                        addBtn.click();
+                                        console.log('✅ Done with current link');
+                                    }
+                                    isBusy = false;
+                                }, 1000);
+                            }
+                        }, 1500);
+                    }
+                }, 800);
+            }
+        }, 100);
+        
+        // Timeout
+        setTimeout(() => {
+            if (isBusy) {
+                clearInterval(checkInterval);
+                isBusy = false;
+            }
+        }, 10000);
+    }
+    
+    // Click handler
+    document.addEventListener('click', (e) => {
+        const target = e.target;
+        if (target.closest('.add-type-item.link') || 
+            target.textContent === 'Bookmark') {
+            handleBookmark();
+        }
+    });
+    
+    console.log('✅ Script loaded - NO LINK STORAGE');
+})();
+
+                        </textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t5')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t5">0</span> characters
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 

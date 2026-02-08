@@ -1068,6 +1068,135 @@
                         </div>
                     </div>
                 </div>
+
+
+                 <!-- Custom Code Box diigo v4 -->
+                <div class="code-box">
+                    <div class="code-header">
+                        <div class="code-title">
+                            <i class="fas fa-file-code"></i> Diigo v4
+                        </div>
+                        <span class="code-badge">JavaScript</span>
+                    </div>
+                    <div class="code-wrapper">
+                        <textarea class="code-textarea" id="t6" spellcheck="false" placeholder="Paste your custom code here...">
+// ==UserScript==
+// @name         Diigo Smart Non-Blocking
+// @match        https://www.diigo.com/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+    
+    // Queue system for multiple clicks
+    let processQueue = [];
+    let isProcessing = false;
+    
+    // Process next in queue
+    function processNext() {
+        if (isProcessing || processQueue.length === 0) return;
+        
+        isProcessing = true;
+        const currentLink = processQueue.shift();
+        
+        console.log('📋 Processing from queue:', currentLink.substring(0, 40));
+        
+        // Your original process logic
+        const checkInterval = setInterval(() => {
+            const urlInput = document.querySelector('.AddBookmark input[type="text"]');
+            
+            if (urlInput) {
+                clearInterval(checkInterval);
+                
+                urlInput.value = currentLink;
+                urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                
+                setTimeout(() => {
+                    const nextBtn = document.querySelector('.submitButton');
+                    if (nextBtn && nextBtn.textContent.includes('Next')) {
+                        nextBtn.click();
+                        
+                        setTimeout(() => {
+                            const desc = document.querySelector('.AddBookmark textarea');
+                            if (desc) {
+                                desc.value = currentLink;
+                                desc.dispatchEvent(new Event('input', { bubbles: true }));
+                                
+                                setTimeout(() => {
+                                    const addBtn = document.querySelector('.submitButton');
+                                    if (addBtn && addBtn.textContent.includes('Add')) {
+                                        addBtn.click();
+                                        console.log('✅ Saved:', currentLink.substring(0, 30));
+                                    }
+                                    
+                                    // Mark as done and process next
+                                    isProcessing = false;
+                                    setTimeout(processNext, 1000);
+                                }, 1000);
+                            } else {
+                                isProcessing = false;
+                                processNext();
+                            }
+                        }, 1500);
+                    } else {
+                        isProcessing = false;
+                        processNext();
+                    }
+                }, 800);
+            }
+        }, 100);
+        
+        setTimeout(() => {
+            clearInterval(checkInterval);
+            isProcessing = false;
+            processNext();
+        }, 10000);
+    }
+    
+    // Click handler
+    document.addEventListener('click', (e) => {
+        if (e.target.closest('.add-type-item.link')) {
+            e.preventDefault();
+            
+            // Get current clipboard
+            navigator.clipboard.readText().then(link => {
+                if (!link || !link.trim()) return;
+                
+                // Add to queue
+                processQueue.push(link.trim());
+                console.log(`📥 Added to queue. Queue size: ${processQueue.length}`);
+                
+                // Start processing if not already
+                if (!isProcessing) {
+                    processNext();
+                }
+                
+                // User can continue working immediately
+            }).catch(() => {
+                const link = prompt("📋 Paste link:", "https://");
+                if (link && link.trim()) {
+                    processQueue.push(link.trim());
+                    if (!isProcessing) processNext();
+                }
+            });
+        }
+    });
+    
+    console.log('✅ Diigo Queue System loaded');
+    
+})();
+                        </textarea>
+                    </div>
+                    <div class="code-actions">
+                        <button class="copy-btn" onclick="copyText('t6')">
+                            <i class="fas fa-copy"></i> Copy Code
+                        </button>
+                        <div class="char-count">
+                            <i class="fas fa-ruler"></i> <span id="count-t6">0</span> characters
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
 

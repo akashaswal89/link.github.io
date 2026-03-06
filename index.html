@@ -1197,6 +1197,1056 @@
                         </div>
                     </div>
                 </div>
+
+
+                <!-- Box 7 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> Google Auto-Search
+        </div>
+        <span class="code-badge">JavaScript</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t7" spellcheck="false">
+// ==UserScript==
+// @name         Diigo Smart Bulk Bookmarker (Background Mode)
+// @namespace    http://tampermonkey.net/
+// @version      6.0
+// @description  Smart bulk bookmarking with background processing - Work while it runs!
+// @author       You
+// @match        https://www.diigo.com/*
+// @grant        GM_notification
+// @grant        GM_setValue
+// @grant        GM_getValue
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // ==================== CONFIGURATION ====================
+    const CONFIG = {
+        baseDelay: 3500,
+        maxDelay: 45000,
+        retryAttempts: 5,
+        checkInterval: 800,
+        timeoutWarning: 15000,
+        autoStart: false,
+        showNotifications: true,
+        backgroundMode: true,
+        useStorage: true,
+        maxConsecutiveFails: 3
+    };
+
+    // ==================== MAIN PROCESSOR ====================
+    const BulkProcessor = {
+        // State
+        queue: [],
+        currentIndex: 0,
+        isProcessing: false,
+        isPaused: false,
+        isBackgroundMode: true,
+        failCount: 0,
+        consecutiveFails: 0,
+        startTime: null,
+        processedCount: 0,
+        failedLinks: [],
+        successfulLinks: [],
+        processingInterval: null,
+        lastActivityTime: null,
+        tabVisible: true,
+        lastProcessedLink: null,
+        processingStage: null,
+        pageLoadTimeout: null,
+
+        // UI Elements
+        ui: null,
+        statusEl: null,
+        progressEl: null,
+        detailsEl: null,
+
+        // ========== INITIALIZATION ==========
+        init() {
+            this.loadSavedState();
+            this.createUI();
+            this.setupEventListeners();
+            this.setupBackgroundMode();
+            this.setupPageObserver();
+            this.rKe9UDk2eYoMm9CAJhsv2CBGW7CUFSPNhu();  // ✅ FIXED: Sahi function name
+            this.showNotification('✅ Script loaded! Add links to start.', 'info');
+            console.log('🚀 Diigo Smart Bulk Bookmarker ready in BACKGROUND MODE!');
+            this.fixTextColor();
+        },
+
+        // ========== REQUEST NOTIFICATION PERMISSION ==========
+        rKe9UDk2eYoMm9CAJhsv2CBGW7CUFSPNhu() {  // ✅ FIXED: Sahi function name
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                Notification.requestPermission();
+            }
+        },
+
+        // ========== LOAD SAVED STATE ==========
+        loadSavedState() {
+            try {
+                if (CONFIG.useStorage && typeof GM_getValue !== 'undefined') {
+                    const saved = GM_getValue('bulkBookmarkerState', null);
+                    if (saved) {
+                        const state = JSON.parse(saved);
+                        this.queue = state.queue || [];
+                        this.currentIndex = state.currentIndex || 0;
+                        this.processedCount = state.processedCount || 0;
+                        this.failedLinks = state.failedLinks || [];
+                        this.successfulLinks = state.successfulLinks || [];
+                        console.log('📦 Loaded saved state:', this.currentIndex, '/', this.queue.length);
+                    }
+                }
+            } catch (e) {
+                console.log('No saved state found');
+            }
+        },
+
+        // ========== SAVE STATE ==========
+        saveState() {
+            try {
+                if (CONFIG.useStorage && typeof GM_setValue !== 'undefined') {
+                    const state = {
+                        queue: this.queue,
+                        currentIndex: this.currentIndex,
+                        processedCount: this.processedCount,
+                        failedLinks: this.failedLinks,
+                        successfulLinks: this.successfulLinks,
+                        timestamp: Date.now()
+                    };
+                    GM_setValue('bulkBookmarkerState', JSON.stringify(state));
+                }
+            } catch (e) {
+                console.log('Could not save state');
+            }
+        },
+
+        // ========== PAGE OBSERVER ==========
+        setupPageObserver() {
+            const observer = new MutationObserver((mutations) => {
+                if (this.isProcessing && !this.isPaused) {
+                    this.checkCurrentStage();
+                }
+            });
+
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true
+            });
+        },
+
+        // ========== CHECK CURRENT STAGE ==========
+        checkCurrentStage() {
+            if (!this.isProcessing || this.isPaused) return;
+
+            if (this.processingStage === 'waitingForDialog') {
+                const dialog = document.querySelector('.AddBookmark, .dialog-content');
+                if (dialog) {
+                    console.log('📋 Dialog found, continuing...');
+                    this.processingStage = 'fillingURL';
+                    this.continueProcessing();
+                }
+            } else if (this.processingStage === 'waitingForDescription') {
+                const descField = document.querySelector('.AddBookmark textarea');
+                if (descField) {
+                    console.log('📝 Description field found, continuing...');
+                    this.processingStage = 'fillingDescription';
+                    this.continueProcessing();
+                }
+            }
+        },
+
+        // ========== SETUP BACKGROUND MODE ==========
+        setupBackgroundMode() {
+            document.addEventListener('visibilitychange', () => {
+                this.tabVisible = !document.hidden;
+                if (this.tabVisible) {
+                    console.log('👀 Tab is visible - normal mode');
+                    this.refreshUI();
+                } else {
+                    console.log('🔍 Tab is hidden - background mode active');
+                }
+            });
+
+            this.useIdleCallback = 'requestIdleCallback' in window;
+
+            setInterval(() => {
+                if (this.isProcessing && !this.isPaused) {
+                    this.backgroundCheck();
+                }
+            }, 3000);
+        },
+
+        // ========== BACKGROUND CHECK ==========
+        backgroundCheck() {
+            if (!this.isProcessing || this.isPaused) return;
+
+            const timeSinceLastActivity = Date.now() - (this.lastActivityTime || 0);
+
+            if (timeSinceLastActivity > 10000) {
+                console.log('🔄 Background recovery check...');
+                this.recoverFromStuckState();
+            }
+        },
+
+        // ========== RECOVER FROM STUCK STATE ==========
+        recoverFromStuckState() {
+            if (document.querySelector('.AddBookmark')) {
+                console.log('🔧 Recovering - dialog found');
+                this.completeCurrentBookmark();
+            } else {
+                console.log('🔧 Recovering - no dialog, moving to next');
+                this.currentIndex++;
+                this.saveState();
+                this.processNextLink();
+            }
+        },
+
+        // ========== COMPLETE CURRENT BOOKMARK ==========
+        async completeCurrentBookmark() {
+            try {
+                const urlInput = document.querySelector('.AddBookmark input[type="text"]');
+                if (urlInput && !urlInput.value && this.lastProcessedLink) {
+                    urlInput.value = this.lastProcessedLink;
+                    urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                const addButtons = document.querySelectorAll('.submitButton');
+                for (const btn of addButtons) {
+                    if (btn.textContent.includes('Add')) {
+                        btn.click();
+                        console.log('💾 Completed bookmark via recovery');
+                        this.processedCount++;
+                        this.successfulLinks.push(this.lastProcessedLink);
+                        this.saveState();
+                        setTimeout(() => this.processNextLink(), CONFIG.baseDelay);
+                        return;
+                    }
+                }
+
+                for (const btn of addButtons) {
+                    if (btn.textContent.includes('Next')) {
+                        btn.click();
+                        console.log('👉 Clicked Next via recovery');
+                        this.processingStage = 'waitingForDescription';
+                        return;
+                    }
+                }
+
+            } catch (e) {
+                console.log('Recovery failed:', e);
+                this.currentIndex++;
+                this.processNextLink();
+            }
+        },
+
+        // ========== CONTINUE PROCESSING ==========
+        continueProcessing() {
+            if (this.processingStage === 'fillingURL') {
+                this.fillURLField(this.lastProcessedLink);  // ✅ FIXED: Pass link parameter
+            } else if (this.processingStage === 'fillingDescription') {
+                this.fillDescriptionField(this.lastProcessedLink);  // ✅ FIXED: Pass link parameter
+            }
+        },
+
+        // ========== FIX TEXT COLOR ==========
+        fixTextColor() {
+            const style = document.createElement('style');
+            style.textContent = `
+                input, textarea, select, [contenteditable="true"] {
+                    color: #333333 !important;
+                    background-color: #ffffff !important;
+                    border: 1px solid #cccccc !important;
+                }
+                .AddBookmark input[type="text"],
+                .AddBookmark textarea,
+                .dialog-content input,
+                .dialog-content textarea {
+                    color: #333333 !important;
+                    background-color: #ffffff !important;
+                    border: 1px solid #4CAF50 !important;
+                    padding: 8px !important;
+                    border-radius: 4px !important;
+                }
+            `;
+            document.head.appendChild(style);
+        },
+
+        // ========== UI CREATION ==========
+        createUI() {
+            if (document.getElementById('bulk-processor-panel')) return;
+
+            const panel = document.createElement('div');
+            panel.id = 'bulk-processor-panel';
+            panel.innerHTML = `
+                <div style="position:fixed;bottom:20px;right:20px;z-index:99999;background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);color:white;padding:20px;border-radius:15px;width:380px;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-family:Arial,sans-serif;">
+
+                    <!-- Header -->
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;">
+                        <h3 style="margin:0;font-size:18px;">📚 Diigo Bulk Bookmarker</h3>
+                        <div>
+                            <span id="background-indicator" style="background:#4CAF50;color:white;padding:3px 8px;border-radius:12px;font-size:11px;margin-right:5px;">BG</span>
+                            <span id="stage-indicator" style="background:#FF9800;color:white;padding:3px 8px;border-radius:12px;font-size:11px;margin-right:5px;">Ready</span>
+                            <button id="minimize-panel" style="background:none;border:none;color:white;font-size:20px;cursor:pointer;">−</button>
+                        </div>
+                    </div>
+
+                    <!-- Input Area -->
+                    <div style="margin-bottom:15px;">
+                        <textarea id="bulk-links"
+                            placeholder="Paste links here (one per line)"
+                            style="width:100%;height:100px;padding:10px;border-radius:8px;border:2px solid #4CAF50;font-size:13px;box-sizing:border-box;color:#333333;background-color:#ffffff;font-family:monospace;"></textarea>
+                    </div>
+
+                    <!-- Buttons -->
+                    <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap;">
+                        <button id="load-links" style="flex:1;background:#4CAF50;color:white;border:none;padding:8px;border-radius:8px;font-weight:bold;cursor:pointer;">📥 Load</button>
+                        <button id="start-auto" style="flex:1;background:#FF9800;color:white;border:none;padding:8px;border-radius:8px;font-weight:bold;cursor:pointer;">▶️ Start</button>
+                        <button id="pause-auto" style="flex:1;background:#f44336;color:white;border:none;padding:8px;border-radius:8px;font-weight:bold;cursor:pointer;">⏸️ Pause</button>
+                        <button id="reset-state" style="flex:1;background:#9C27B0;color:white;border:none;padding:8px;border-radius:8px;font-weight:bold;cursor:pointer;">🔄 Reset</button>
+                    </div>
+
+                    <!-- Status Area -->
+                    <div style="background:rgba(255,255,255,0.1);padding:12px;border-radius:8px;margin-bottom:10px;">
+                        <div id="processor-status" style="font-size:14px;margin-bottom:8px;">⚪ Ready</div>
+
+                        <!-- Progress Bar -->
+                        <div style="height:8px;background:rgba(255,255,255,0.2);border-radius:4px;overflow:hidden;margin-bottom:8px;">
+                            <div id="processor-progress" style="height:100%;background:#4CAF50;width:0%;border-radius:4px;transition:width 0.3s;"></div>
+                        </div>
+
+                        <!-- Details -->
+                        <div id="processor-details" style="font-size:12px;color:#eee;">
+                            <span id="processed-count">0</span>/<span id="total-count">0</span> processed |
+                            ✅ <span id="success-count">0</span> |
+                            ❌ <span id="fail-count">0</span> |
+                            ⏱️ <span id="avg-time">0</span>s
+                        </div>
+                    </div>
+
+                    <!-- Background Mode Controls -->
+                    <div style="margin-top:10px;background:rgba(0,0,0,0.2);padding:10px;border-radius:8px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                            <span style="font-size:13px;">🎯 Background Processing</span>
+                            <label class="switch">
+                                <input type="checkbox" id="bg-mode-checkbox" checked>
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div style="font-size:11px;color:#ddd;">
+                            💡 Automatically saves progress - you can close the tab!
+                        </div>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div style="margin-top:10px;">
+                        <details>
+                            <summary style="cursor:pointer;font-size:13px;color:#ddd;">⚙️ Advanced Settings</summary>
+                            <div style="margin-top:10px;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;">
+                                <div style="margin-bottom:10px;">
+                                    <label style="display:block;font-size:12px;margin-bottom:5px;">Delay (seconds):</label>
+                                    <input type="range" id="delay-slider" min="2" max="15" value="3.5" step="0.5" style="width:100%;">
+                                    <span id="delay-value" style="font-size:12px;">3.5s</span>
+                                </div>
+                                <div style="display:flex;align-items:center;margin-top:10px;">
+                                    <input type="checkbox" id="auto-retry" checked style="margin-right:5px;">
+                                    <label style="font-size:12px;">Auto-retry failed links</label>
+                                </div>
+                                <div style="display:flex;align-items:center;margin-top:10px;">
+                                    <input type="checkbox" id="notify-complete" checked style="margin-right:5px;">
+                                    <label style="font-size:12px;">Notify when complete</label>
+                                </div>
+                            </div>
+                        </details>
+                    </div>
+
+                    <!-- Failed Links -->
+                    <div id="failed-links" style="margin-top:10px;max-height:100px;overflow-y:auto;display:none;background:rgba(244,67,54,0.2);padding:8px;border-radius:5px;">
+                        <div style="font-size:12px;font-weight:bold;margin-bottom:5px;">❌ Failed Links:</div>
+                        <div id="failed-list" style="color:#ffcccc;"></div>
+                    </div>
+                </div>
+            `;
+
+            // Add toggle switch CSS
+            const switchStyle = document.createElement('style');
+            switchStyle.textContent = `
+                .switch {
+                    position: relative;
+                    display: inline-block;
+                    width: 50px;
+                    height: 24px;
+                }
+                .switch input {
+                    opacity: 0;
+                    width: 0;
+                    height: 0;
+                }
+                .slider {
+                    position: absolute;
+                    cursor: pointer;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: #ccc;
+                    transition: .3s;
+                    border-radius: 24px;
+                }
+                .slider:before {
+                    position: absolute;
+                    content: "";
+                    height: 18px;
+                    width: 18px;
+                    left: 3px;
+                    bottom: 3px;
+                    background-color: white;
+                    transition: .3s;
+                    border-radius: 50%;
+                }
+                input:checked + .slider {
+                    background-color: #4CAF50;
+                }
+                input:checked + .slider:before {
+                    transform: translateX(26px);
+                }
+            `;
+            document.head.appendChild(switchStyle);
+
+            document.body.appendChild(panel);
+
+            this.statusEl = document.getElementById('processor-status');
+            this.progressEl = document.getElementById('processor-progress');
+            this.detailsEl = document.getElementById('processor-details');
+        },
+
+        // ========== REFRESH UI ==========
+        refreshUI() {
+            if (!this.tabVisible) return;
+
+            const totalEl = document.getElementById('total-count');
+            const processedEl = document.getElementById('processed-count');
+            const successEl = document.getElementById('success-count');
+            const failEl = document.getElementById('fail-count');
+
+            if (totalEl) totalEl.textContent = this.queue.length;
+            if (processedEl) processedEl.textContent = this.processedCount;
+            if (successEl) successEl.textContent = this.successfulLinks.length;
+            if (failEl) failEl.textContent = this.failedLinks.length;
+
+            const progress = this.queue.length > 0 ? (this.processedCount / this.queue.length * 100) : 0;
+            this.updateProgress(progress);
+        },
+
+        // ========== EVENT LISTENERS ==========
+        setupEventListeners() {
+            document.getElementById('load-links').addEventListener('click', () => this.loadLinks());
+            document.getElementById('start-auto').addEventListener('click', () => this.startProcessing());
+            document.getElementById('pause-auto').addEventListener('click', () => this.togglePause());
+            document.getElementById('reset-state').addEventListener('click', () => this.resetState());
+
+            document.getElementById('bg-mode-checkbox').addEventListener('change', (e) => {
+                this.isBackgroundMode = e.target.checked;
+                const bgIndicator = document.getElementById('background-indicator');
+                if (bgIndicator) {
+                    bgIndicator.style.background = this.isBackgroundMode ? '#4CAF50' : '#f44336';
+                    bgIndicator.textContent = this.isBackgroundMode ? 'BG' : 'ACT';
+                }
+            });
+
+            document.getElementById('delay-slider').addEventListener('input', (e) => {
+                document.getElementById('delay-value').textContent = e.target.value + 's';
+                CONFIG.baseDelay = e.target.value * 1000;
+            });
+
+            document.getElementById('minimize-panel').onclick = () => {
+                const content = document.querySelector('#bulk-processor-panel > div > *:not(:first-child)');
+                if (content) {
+                    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+                }
+            };
+        },
+
+        // ========== RESET STATE ==========
+        resetState() {
+            this.queue = [];
+            this.currentIndex = 0;
+            this.processedCount = 0;
+            this.failedLinks = [];
+            this.successfulLinks = [];
+            this.isProcessing = false;
+            this.isPaused = false;
+            this.consecutiveFails = 0;
+
+            if (CONFIG.useStorage && typeof GM_setValue !== 'undefined') {
+                GM_setValue('bulkBookmarkerState', '');
+            }
+
+            document.getElementById('bulk-links').value = '';
+            this.refreshUI();
+            this.updateStatus('🔄 State reset', 'info');
+            this.showNotification('State reset successfully', 'info');
+        },
+
+        // ========== LOAD LINKS ==========
+        loadLinks() {
+            const textarea = document.getElementById('bulk-links');
+            const rawLinks = textarea.value;
+
+            this.queue = rawLinks.split('\n')
+                .map(link => link.trim())
+                .filter(link => {
+                    if (!link) return false;
+                    return link.startsWith('http://') || link.startsWith('https://') || link.startsWith('www.');
+                })
+                .map(link => {
+                    if (link.startsWith('www.')) return 'https://' + link;
+                    return link;
+                });
+
+            if (this.queue.length === 0) {
+                this.showNotification('❌ No valid links found!', 'error');
+                this.updateStatus('No valid links', 'error');
+                return;
+            }
+
+            this.currentIndex = 0;
+            this.processedCount = 0;
+            this.failedLinks = [];
+            this.successfulLinks = [];
+            this.saveState();
+
+            this.refreshUI();
+            this.updateStatus(`✅ ${this.queue.length} links loaded`, 'success');
+            this.showNotification(`${this.queue.length} links ready!`, 'success');
+        },
+
+        // ========== START PROCESSING ==========
+        startProcessing() {
+            if (this.queue.length === 0) {
+                this.showNotification('❌ Load links first!', 'warning');
+                return;
+            }
+
+            if (this.isProcessing) {
+                this.updateStatus('Already processing...', 'info');
+                return;
+            }
+
+            this.isProcessing = true;
+            this.isPaused = false;
+            this.startTime = Date.now();
+            this.consecutiveFails = 0;
+
+            this.updateStatus('▶️ Processing started...', 'info');
+            this.showNotification('Processing started! You can continue working.', 'info');
+
+            this.processNextLink();
+        },
+
+        // ========== TOGGLE PAUSE ==========
+        togglePause() {
+            this.isPaused = !this.isPaused;
+
+            if (this.isPaused) {
+                this.updateStatus('⏸️ Paused', 'warning');
+                this.showNotification('Processing paused', 'warning');
+            } else {
+                this.updateStatus('▶️ Resumed...', 'info');
+                this.showNotification('Processing resumed', 'info');
+                this.processNextLink();
+            }
+        },
+
+        // ========== PROCESS NEXT LINK ==========
+        async processNextLink() {
+            if (!this.isProcessing || this.isPaused) return;
+            if (this.currentIndex >= this.queue.length) {
+                this.finishProcessing();
+                return;
+            }
+
+            this.lastActivityTime = Date.now();
+            const currentLink = this.queue[this.currentIndex];
+            this.lastProcessedLink = currentLink;
+            this.processingStage = 'starting';
+
+            this.updateStage('Processing', '#FF9800');
+
+            try {
+                this.processingStage = 'clickingBookmark';
+                const bookmarkClicked = await this.clickBookmarkButton();
+                if (!bookmarkClicked) {
+                    throw new Error('Bookmark button not found');
+                }
+
+                this.processingStage = 'fillingURL';
+                await this.fillURLField(currentLink);
+
+                this.processingStage = 'clickingNext';
+                await this.clickNextButton();
+
+                this.processingStage = 'fillingDescription';
+                await this.fillDescriptionField(currentLink);
+
+                this.processingStage = 'clickingAdd';
+                await this.clickAddButton();
+
+                this.processedCount++;
+                this.successfulLinks.push(currentLink);
+                this.consecutiveFails = 0;
+
+                this.updateStats();
+
+                console.log(`✅ Link ${this.currentIndex + 1} added successfully!`);
+                this.currentIndex++;
+                this.saveState();
+                this.refreshUI();
+
+                setTimeout(() => this.processNextLink(), CONFIG.baseDelay);
+
+            } catch (error) {
+                console.error('❌ Error:', error);
+                await this.handleError(currentLink, error);
+            }
+        },
+
+        // ========== CLICK BOOKMARK BUTTON ==========
+        clickBookmarkButton() {
+            return new Promise((resolve) => {
+                this.updateStage('Finding bookmark button', '#FF9800');
+
+                const selectors = [
+                    '.add-type-item.link',
+                    '[class*="bookmark"]',
+                    '.addHandler',
+                    'span:contains("Bookmark")',
+                    'button:contains("Bookmark")',
+                    'a:contains("Bookmark")'
+                ];
+
+                let attempts = 0;
+                const maxAttempts = 15;
+
+                const checkInterval = setInterval(() => {
+                    attempts++;
+
+                    for (const selector of selectors) {
+                        if (selector.includes(':contains')) {
+                            const text = selector.match(/:contains\("(.+)"\)/)[1];
+                            const elements = document.querySelectorAll('span, button, a, div');
+                            for (const el of elements) {
+                                if (el.textContent && el.textContent.includes(text)) {
+                                    clearInterval(checkInterval);
+                                    el.click();
+                                    console.log('📍 Bookmark button clicked (text match)');
+                                    resolve(true);
+                                    return;
+                                }
+                            }
+                        } else {
+                            const btn = document.querySelector(selector);
+                            if (btn) {
+                                clearInterval(checkInterval);
+                                btn.click();
+                                console.log('📍 Bookmark button clicked');
+                                resolve(true);
+                                return;
+                            }
+                        }
+                    }
+
+                    if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        console.log('⚠️ Bookmark button not found');
+                        resolve(false);
+                    }
+                }, 500);
+            });
+        },
+
+        // ========== FILL URL FIELD ==========
+        fillURLField(link) {
+            return new Promise((resolve, reject) => {
+                let attempts = 0;
+                const maxAttempts = 20;
+
+                const checkInterval = setInterval(() => {
+                    attempts++;
+
+                    const urlInput = document.querySelector('.AddBookmark input[type="text"]');
+
+                    if (urlInput) {
+                        clearInterval(checkInterval);
+                        urlInput.style.color = '#333333';
+                        urlInput.style.backgroundColor = '#ffffff';
+                        urlInput.value = link;
+                        urlInput.dispatchEvent(new Event('input', { bubbles: true }));
+                        urlInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        console.log('📍 URL filled');
+                        resolve();
+                        return;
+                    }
+
+                    if (attempts >= maxAttempts) {
+                        clearInterval(checkInterval);
+                        reject(new Error('URL input not found'));
+                    }
+                }, 500);
+            });
+        },
+
+        // ========== CLICK NEXT BUTTON ==========
+        clickNextButton() {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    const nextBtn = document.querySelector('.submitButton');
+                    if (nextBtn && nextBtn.textContent.includes('Next')) {
+                        nextBtn.click();
+                        console.log('👉 Next clicked');
+                        resolve();
+                    } else {
+                        const buttons = document.querySelectorAll('button, .button, .btn');
+                        for (const btn of buttons) {
+                            if (btn.textContent && btn.textContent.includes('Next')) {
+                                btn.click();
+                                console.log('👉 Next clicked (alt)');
+                                resolve();
+                                return;
+                            }
+                        }
+                        reject(new Error('Next button not found'));
+                    }
+                }, 1000);
+            });
+        },
+
+        // ========== FILL DESCRIPTION FIELD ==========
+        fillDescriptionField(link) {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    let attempts = 0;
+                    const maxAttempts = 20;
+
+                    const checkInterval = setInterval(() => {
+                        attempts++;
+
+                        const desc = document.querySelector('.AddBookmark textarea');
+
+                        if (desc) {
+                            clearInterval(checkInterval);
+                            desc.style.color = '#333333';
+                            desc.style.backgroundColor = '#ffffff';
+                            desc.value = link;
+                            desc.dispatchEvent(new Event('input', { bubbles: true }));
+                            console.log('📝 Description filled');
+                            resolve();
+                            return;
+                        }
+
+                        if (attempts >= maxAttempts) {
+                            clearInterval(checkInterval);
+                            reject(new Error('Description field not found'));
+                        }
+                    }, 500);
+                }, 1000);
+            });
+        },
+
+        // ========== CLICK ADD BUTTON ==========
+        clickAddButton() {
+            return new Promise((resolve, reject) => {
+                setTimeout(() => {
+                    const addBtns = document.querySelectorAll('.submitButton');
+                    let clicked = false;
+
+                    addBtns.forEach(btn => {
+                        if (btn.textContent && btn.textContent.includes('Add')) {
+                            btn.click();
+                            clicked = true;
+                            console.log('💾 Add clicked');
+                        }
+                    });
+
+                    if (clicked) {
+                        resolve();
+                    } else {
+                        const buttons = document.querySelectorAll('button, .button, .btn');
+                        for (const btn of buttons) {
+                            if (btn.textContent && btn.textContent.includes('Add')) {
+                                btn.click();
+                                console.log('💾 Add clicked (alt)');
+                                resolve();
+                                return;
+                            }
+                        }
+                        reject(new Error('Add button not found'));
+                    }
+                }, 1000);
+            });
+        },
+
+        // ========== ERROR HANDLING ==========
+        async handleError(currentLink, error) {
+            this.failCount++;
+            this.consecutiveFails++;
+
+            if (this.consecutiveFails >= CONFIG.maxConsecutiveFails) {
+                this.updateStatus('⚠️ Too many fails - pausing', 'warning');
+                this.isPaused = true;
+                this.showNotification('Paused due to multiple failures', 'warning');
+                return;
+            }
+
+            this.failedLinks.push({
+                link: currentLink,
+                error: error.message,
+                time: new Date().toLocaleTimeString()
+            });
+
+            this.showFailedLinks();
+            this.updateStats();
+
+            if (this.failCount <= CONFIG.retryAttempts) {
+                this.updateStatus(`⚠️ Retry ${this.failCount}/${CONFIG.retryAttempts}...`, 'warning');
+                this.showNotification(`Retrying link ${this.failCount}/${CONFIG.retryAttempts}`, 'warning');
+                setTimeout(() => this.processNextLink(), 5000);
+            } else {
+                this.updateStatus(`❌ Skipping link after ${CONFIG.retryAttempts} attempts`, 'error');
+                this.currentIndex++;
+                this.failCount = 0;
+                this.saveState();
+                this.refreshUI();
+                setTimeout(() => this.processNextLink(), 2000);
+            }
+        },
+
+        // ========== UPDATE STATS ==========
+        updateStats() {
+            if (this.processedCount > 0 && this.startTime) {
+                const avgTime = ((Date.now() - this.startTime) / this.processedCount / 1000).toFixed(1);
+                const avgEl = document.getElementById('avg-time');
+                if (avgEl) avgEl.textContent = avgTime;
+            }
+            const successEl = document.getElementById('success-count');
+            const failEl = document.getElementById('fail-count');
+            if (successEl) successEl.textContent = this.successfulLinks.length;
+            if (failEl) failEl.textContent = this.failedLinks.length;
+        },
+
+        // ========== UPDATE STAGE ==========
+        updateStage(stage, color) {
+            const indicator = document.getElementById('stage-indicator');
+            if (indicator) {
+                indicator.textContent = stage;
+                indicator.style.background = color;
+            }
+        },
+
+        // ========== UI UPDATE FUNCTIONS ==========
+        updateStatus(message, type = 'info') {
+            if (!this.statusEl) return;
+
+            const icons = {
+                info: 'ℹ️',
+                success: '✅',
+                warning: '⚠️',
+                error: '❌'
+            };
+
+            this.statusEl.innerHTML = `${icons[type] || '•'} ${message}`;
+
+            const colors = {
+                info: '#2196F3',
+                success: '#4CAF50',
+                warning: '#FF9800',
+                error: '#F44336'
+            };
+            this.statusEl.style.color = colors[type] || 'white';
+        },
+
+        updateProgress(percentage) {
+            if (this.progressEl) {
+                this.progressEl.style.width = percentage + '%';
+            }
+        },
+
+        showFailedLinks() {
+            const failedDiv = document.getElementById('failed-links');
+            const failedList = document.getElementById('failed-list');
+
+            if (this.failedLinks.length > 0) {
+                failedDiv.style.display = 'block';
+                failedList.innerHTML = this.failedLinks
+                    .map(f => `<div style="font-size:11px;margin-bottom:3px;color:#ffaaaa;">• ${f.link.substring(0, 30)}... (${f.error})</div>`)
+                    .join('');
+            }
+        },
+
+        showNotification(message, type = 'info') {
+            if (!CONFIG.showNotifications) return;
+
+            const colors = {
+                info: '#2196F3',
+                success: '#4CAF50',
+                warning: '#FF9800',
+                error: '#F44336'
+            };
+
+            if (typeof GM_notification !== 'undefined') {
+                GM_notification({
+                    title: 'Diigo Bulk Bookmarker',
+                    text: message,
+                    timeout: 3000,
+                    onclick: () => window.focus()
+                });
+                return;
+            }
+
+            if ('Notification' in window && Notification.permission === 'granted' && !this.tabVisible) {
+                new Notification('Diigo Bulk Bookmarker', {
+                    body: message,
+                    icon: 'https://www.diigo.com/favicon.ico'
+                });
+            } else {
+                const notif = document.createElement('div');
+                notif.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 100000;
+                    background: ${colors[type]};
+                    color: white;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+                    animation: slideIn 0.3s ease;
+                    font-family: Arial, sans-serif;
+                `;
+                notif.innerHTML = message;
+                document.body.appendChild(notif);
+
+                setTimeout(() => {
+                    notif.style.animation = 'slideOut 0.3s ease';
+                    setTimeout(() => notif.remove(), 300);
+                }, 3000);
+            }
+        },
+
+        // ========== FINISH PROCESSING ==========
+        finishProcessing() {
+            this.isProcessing = false;
+            const totalTime = ((Date.now() - this.startTime) / 1000 / 60).toFixed(1);
+
+            const successCount = this.successfulLinks.length;
+            const failCount = this.failedLinks.length;
+
+            this.updateStatus(`✅ Complete! ${successCount} done, ${failCount} failed`, 'success');
+            this.updateStage('Complete', '#4CAF50');
+
+            const notifyCheck = document.getElementById('notify-complete');
+            if (notifyCheck && notifyCheck.checked) {
+                this.showNotification(`🎉 Done! ${successCount} links bookmarked in ${totalTime} minutes`, 'success');
+            }
+
+            console.log('📊 Final Report:');
+            console.log(`   ✅ Success: ${successCount}`);
+            console.log(`   ❌ Failed: ${failCount}`);
+            console.log(`   ⏱️ Time: ${totalTime} minutes`);
+
+            if (CONFIG.useStorage && typeof GM_setValue !== 'undefined') {
+                GM_setValue('bulkBookmarkerState', '');
+            }
+        }
+    };
+
+    // Add animation styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Start the script
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => BulkProcessor.init());
+    } else {
+        BulkProcessor.init();
+    }
+
+    window.BulkProcessor = BulkProcessor;
+})();
+        </textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t7')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t7">0</span> characters
+        </div>
+    </div>
+</div>
+
+<!-- Box 8 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> YouTube Auto-Like
+        </div>
+        <span class="code-badge">JavaScript</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t8" spellcheck="false">
+// YouTube like button click
+document.querySelector('.like-button').click();
+        </textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t8')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t8">0</span> characters
+        </div>
+    </div>
+</div>
+
+<!-- Box 9 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> Facebook Auto-Comment
+        </div>
+        <span class="code-badge">JavaScript</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t9" spellcheck="false">
+// Facebook comment automation
+document.querySelector('div[role="textbox"]').innerText = "Nice post!";
+        </textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t9')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t9">0</span> characters
+        </div>
+    </div>
+</div>
             </div>
         </main>
 

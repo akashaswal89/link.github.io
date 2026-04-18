@@ -350,6 +350,8 @@
                 width: 95%;
             }
         }
+
+        
     </style>
 </head>
 <body>
@@ -1417,12 +1419,12 @@
 <div class="code-box">
     <div class="code-header">
         <div class="code-title">
-            <i class="fas fa-file-code"></i> Facebook Auto-Comment
+            <i class="fas fa-file-code"></i> diggo bulk  v1
         </div>
         <span class="code-badge">Secure Code</span>
     </div>
     <div class="code-wrapper">
-        <textarea class="code-textarea" id="t9" spellcheck="false">hello</textarea>
+        <textarea class="code-textarea" id="t9" spellcheck="false"></textarea>
     </div>
     <div class="code-actions">
         <button class="copy-btn" onclick="copyText('t9')">
@@ -1430,6 +1432,69 @@
         </button>
         <div class="char-count">
             <i class="fas fa-ruler"></i> <span id="count-t9">0</span> characters
+        </div>
+    </div>
+</div>
+
+<!-- Box 10 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> Facebook Auto-Comment
+        </div>
+        <span class="code-badge">Secure Code</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t10" spellcheck="false">hello</textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t10')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t10">0</span> characters
+        </div>
+    </div>
+</div>
+
+<!-- Box 11 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> Facebook Auto-Comment
+        </div>
+        <span class="code-badge">Secure Code</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t11" spellcheck="false">hello</textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t11')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t11">0</span> characters
+        </div>
+    </div>
+</div>
+
+<!-- Box 12 -->
+<div class="code-box">
+    <div class="code-header">
+        <div class="code-title">
+            <i class="fas fa-file-code"></i> Facebook Auto-Comment
+        </div>
+        <span class="code-badge">Secure Code</span>
+    </div>
+    <div class="code-wrapper">
+        <textarea class="code-textarea" id="t12" spellcheck="false">hello</textarea>
+    </div>
+    <div class="code-actions">
+        <button class="copy-btn" onclick="copyText('t12')">
+            <i class="fas fa-copy"></i> Copy Code
+        </button>
+        <div class="char-count">
+            <i class="fas fa-ruler"></i> <span id="count-t12">0</span> characters
         </div>
     </div>
 </div>
@@ -1772,6 +1837,20 @@
         window.addEventListener('beforeunload', function() {
             // Session will be cleared automatically because we're using sessionStorage
         });
+
+// java script code to insert html 
+document.getElementById("t9").value = '';
+
     </script>
+    <script>
+window.onload = function() {
+    fetch("diggo-bluk-v1.js")
+        .then(res => res.text())
+        .then(data => {
+            document.getElementById("t9").value = data;
+        })
+        .catch(err => console.error("Error loading file:", err));
+};
+</script>
 </body>
 </html>
